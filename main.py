@@ -6,7 +6,23 @@ from pypdf import PdfReader
 from database import SessionLocal, Candidato
 from comparador import comparar, palavras_em_comum
 
+import os
+import secrets
+from fastapi import Depends, Header
+
 app = FastAPI(title="TalentMatch")
+
+SENHA_RECRUTADOR = os.getenv("SENHA_RECRUTADOR", "talentmatch123")
+
+
+def exigir_senha(x_senha: str = Header(default="")):
+    if not secrets.compare_digest(x_senha.encode(), SENHA_RECRUTADOR.encode()):
+        raise HTTPException(401, "Senha incorreta.")
+
+
+@app.post("/login", dependencies=[Depends(exigir_senha)])
+def login():
+    return {"ok": True}
 
 
 def ler_pdf(conteudo: bytes) -> str:
@@ -43,7 +59,7 @@ async def cadastrar(
         db.close()
 
 
-@app.post("/ranking")
+@app.post("/ranking", dependencies=[Depends(exigir_senha)])
 def ranking(
     vaga: str = Form(...),
     area: str = Form(""),
@@ -87,7 +103,7 @@ def ranking(
     finally:
         db.close()
 
-@app.get("/candidatos")
+@app.get("/candidatos", dependencies=[Depends(exigir_senha)])
 def listar():
     db = SessionLocal()
     try:
@@ -108,7 +124,7 @@ def listar():
         db.close()
 
 
-@app.delete("/candidatos/{candidato_id}")
+@app.delete("/candidatos/{candidato_id}", dependencies=[Depends(exigir_senha)])
 def excluir(candidato_id: int):
     db = SessionLocal()
     try:

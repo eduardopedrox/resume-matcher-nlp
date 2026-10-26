@@ -212,6 +212,12 @@
     font: 600 0.85rem 'Inter', sans-serif;
   }
   .excluir:hover { background: #ef4444; color: #fff; }
+
+    input[type=password] {
+    width: 100%; padding: 12px 14px; border-radius: 12px; background: var(--input); color: var(--texto);
+    border: 1px solid var(--borda); font: 0.95rem 'Inter', sans-serif; outline: none; transition: 0.2s;
+  }
+  input[type=password]:focus { border-color: var(--a1); box-shadow: 0 0 0 3px var(--glow1); }
 </style>
 </head>
 <body>
@@ -240,7 +246,7 @@
         <p>Cadastre seus dados, envie seu currículo em PDF e entre no banco de talentos.</p>
         <span class="cta">Quero me cadastrar →</span>
       </button>
-      <button class="escolha" onclick="ir('recrutador')">
+      <button class="escolha" onclick="entrarRecrutador()">
         <span class="icone">🧑‍💼</span>
         <h3>Sou recrutador</h3>
         <p>Cole a descrição da vaga e veja os candidatos ordenados por compatibilidade.</p>
@@ -353,6 +359,18 @@
     </div>
   </section>
 
+  <!-- LOGIN DO RECRUTADOR -->
+  <section id="login" class="view">
+    <button class="voltar" onclick="ir('home')">← Voltar</button>
+    <form id="formLogin" class="card">
+      <h2>🔒 Área do recrutador</h2>
+      <p class="sub">Digite a senha para acessar os candidatos.</p>
+      <label class="campo">Senha</label>
+      <input type="password" name="senha" required>
+      <button class="enviar" type="submit">Entrar</button>
+      <div id="msgLogin" class="msg"></div>
+    </form>
+  </section>
 </div>
 
 <script>
@@ -439,7 +457,7 @@
     msg.className = 'msg';
 
     try {
-      const resp = await fetch('/ranking', { method: 'POST', body: new FormData(form) });
+      const resp = await api('/ranking', { method: 'POST', body: new FormData(form) });
       const lista = await resp.json();
       if (!resp.ok) throw new Error(lista.detail || 'Erro ao comparar.');
 
@@ -520,7 +538,7 @@
     const caixa = document.getElementById('listaCadastrados');
     const contagem = document.getElementById('contagem');
     try {
-      const resp = await fetch('/candidatos');
+      const resp = await api('/candidatos');
       const lista = await resp.json();
       if (!resp.ok) throw new Error('Erro ao carregar a lista.');
 
@@ -549,11 +567,45 @@
     if (!confirm('Excluir ' + botao.dataset.nome + ' do banco de talentos?')) return;
 
     try {
-      const resp = await fetch('/candidatos/' + botao.dataset.id, { method: 'DELETE' });
+      const resp = await api('/candidatos/' + botao.dataset.id, { method: 'DELETE' });
       if (!resp.ok) throw new Error('Erro ao excluir.');
       await carregarCadastrados();
     } catch (erro) {
       alert(erro.message);
+    }
+  });
+
+    // ---------- Login do recrutador ----------
+  let senha = '';
+
+  async function api(url, opcoes = {}) {
+    opcoes.headers = { ...(opcoes.headers || {}), 'X-Senha': senha };
+    const resp = await fetch(url, opcoes);
+    if (resp.status === 401) {
+      senha = '';
+      ir('login');
+      throw new Error('Sessão expirada. Entre novamente.');
+    }
+    return resp;
+  }
+
+  function entrarRecrutador() {
+    ir(senha ? 'recrutador' : 'login');
+  }
+
+  document.getElementById('formLogin').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const campo = e.target.querySelector('input[name=senha]');
+    const msg = document.getElementById('msgLogin');
+    try {
+      const resp = await fetch('/login', { method: 'POST', headers: { 'X-Senha': campo.value } });
+      if (!resp.ok) throw new Error('Senha incorreta.');
+      senha = campo.value;
+      campo.value = '';
+      msg.className = 'msg';
+      ir('recrutador');
+    } catch (erro) {
+      mensagem(msg, 'erro', '❌ ' + erro.message);
     }
   });
 </script>
