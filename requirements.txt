@@ -4,3 +4,4 @@ sqlalchemy
 pypdf
 python-multipart
 scikit-learn
+psycopg2-binary
