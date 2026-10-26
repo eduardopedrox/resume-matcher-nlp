@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Banco de Talentos</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    min-height: 100vh;
+    color: #e2e8f0;
+    background:
+      radial-gradient(circle at 15% 10%, rgba(99, 102, 241, 0.25), transparent 40%),
+      radial-gradient(circle at 85% 90%, rgba(236, 72, 153, 0.18), transparent 40%),
+      #0b1020;
+    padding: 32px 16px 64px;
+  }
+
+  .container { max-width: 760px; margin: 0 auto; }
+
+  header { text-align: center; margin-bottom: 32px; }
+  header h1 {
+    font-size: 2.4rem; font-weight: 800; letter-spacing: -1px;
+    background: linear-gradient(90deg, #818cf8, #f472b6);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  header p { color: #94a3b8; margin-top: 8px; }
+
+  .tabs {
+    display: flex; gap: 6px; padding: 6px; margin-bottom: 24px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+  }
+  .tab {
+    flex: 1; padding: 12px; border: 0; border-radius: 10px;
+    background: transparent; color: #94a3b8;
+    font: 600 0.95rem 'Inter', sans-serif; cursor: pointer; transition: 0.2s;
+  }
+  .tab:hover { color: #e2e8f0; }
+  .tab.ativa { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4); }
+
+  .card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px; padding: 28px;
+    backdrop-filter: blur(12px);
+  }
+  .card h2 { font-size: 1.3rem; margin-bottom: 4px; }
+  .card .sub { color: #94a3b8; font-size: 0.9rem; margin-bottom: 22px; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
+  .full { grid-column: 1 / -1; }
+
+  label.campo { display: block; font-size: 0.82rem; font-weight: 600; color: #cbd5e1; margin-bottom: 6px; }
+  input[type=text], input[type=email], input[type=tel], textarea {
+    width: 100%; padding: 12px 14px; border-radius: 12px;
+    background: rgba(15, 23, 42, 0.7); color: #f1f5f9;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    font: 0.95rem 'Inter', sans-serif; outline: none; transition: 0.2s;
+  }
+  input:focus, textarea:focus { border-color: #818cf8; box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.25); }
+  textarea { resize: vertical; min-height: 160px; }
+
+  .upload {
+    display: block; text-align: center; padding: 24px; border-radius: 14px;
+    border: 2px dashed rgba(129, 140, 248, 0.5); background: rgba(99, 102, 241, 0.07);
+    color: #a5b4fc; cursor: pointer; transition: 0.2s;
+  }
+  .upload:hover { background: rgba(99, 102, 241, 0.15); }
+  .upload.com-arquivo { border-style: solid; color: #86efac; border-color: rgba(134, 239, 172, 0.5); background: rgba(34, 197, 94, 0.08); }
+  .upload input { display: none; }
+
+  button.enviar {
+    width: 100%; margin-top: 22px; padding: 14px; border: 0; border-radius: 12px;
+    background: linear-gradient(135deg, #6366f1, #ec4899); color: #fff;
+    font: 700 1rem 'Inter', sans-serif; cursor: pointer; transition: 0.2s;
+  }
+  button.enviar:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(236, 72, 153, 0.35); }
+  button.enviar:disabled { opacity: 0.6; cursor: wait; transform: none; }
+
+  .msg { margin-top: 16px; padding: 12px 14px; border-radius: 12px; font-size: 0.9rem; display: none; }
+  .msg.ok { display: block; background: rgba(34, 197, 94, 0.15); color: #86efac; }
+  .msg.erro { display: block; background: rgba(239, 68, 68, 0.15); color: #fca5a5; }
+
+  .aba { display: none; }
+  .aba.ativa { display: block; }
+
+  #resultado { margin-top: 24px; display: grid; gap: 14px; }
+  .item {
+    display: grid; grid-template-columns: 48px 1fr auto; gap: 16px; align-items: center;
+    padding: 18px; border-radius: 16px;
+    background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08);
+    animation: entrar 0.4s ease both;
+  }
+  @keyframes entrar { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  .pos {
+    width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center;
+    font-weight: 800; background: rgba(255, 255, 255, 0.08);
+  }
+  .item:first-child .pos { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #1f2937; }
+  .info strong { display: block; font-size: 1.05rem; }
+  .info span { color: #94a3b8; font-size: 0.82rem; }
+  .barra { height: 8px; border-radius: 99px; background: rgba(255, 255, 255, 0.08); margin-top: 10px; overflow: hidden; }
+  .barra div { height: 100%; width: 0; border-radius: 99px; background: linear-gradient(90deg, #6366f1, #ec4899); transition: width 0.8s ease; }
+  .score { font-size: 1.5rem; font-weight: 800; color: #c7d2fe; }
+  .vazio { text-align: center; color: #94a3b8; padding: 20px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>Banco de Talentos</h1>
+    <p>Cadastre seu currículo ou encontre os candidatos mais compatíveis com uma vaga.</p>
+  </header>
+
+  <div class="tabs">
+    <button class="tab ativa" data-aba="cadastro">📝 Cadastro</button>
+    <button class="tab" data-aba="ranking">🏆 Ranking</button>
+  </div>
+
+  <!-- ABA CADASTRO -->
+  <section id="cadastro" class="aba ativa">
+    <form id="formCadastro" class="card">
+      <h2>Cadastre-se no banco de talentos</h2>
+      <p class="sub">Preencha seus dados e envie o currículo em PDF. Nós lemos o conteúdo automaticamente.</p>
+
+      <div class="grid">
+        <div>
+          <label class="campo">Nome completo</label>
+          <input type="text" name="nome" required>
+        </div>
+        <div>
+          <label class="campo">E-mail</label>
+          <input type="email" name="email" required>
+        </div>
+        <div>
+          <label class="campo">Telefone</label>
+          <input type="tel" name="telefone">
+        </div>
+        <div>
+          <label class="campo">Cidade</label>
+          <input type="text" name="cidade">
+        </div>
+        <div class="full">
+          <label class="campo">Área de atuação</label>
+          <input type="text" name="area" placeholder="Ex: Dados, Design, Vendas">
+        </div>
+        <div class="full">
+          <label class="upload" id="upload">
+            <input type="file" name="curriculo" accept=".pdf" required>
+            <span id="textoUpload">📄 Clique para escolher o currículo em PDF</span>
+          </label>
+        </div>
+      </div>
+
+      <button class="enviar" type="submit">Enviar cadastro</button>
+      <div id="msgCadastro" class="msg"></div>
+    </form>
+  </section>
+
+  <!-- ABA RANKING -->
+  <section id="ranking" class="aba">
+    <form id="formRanking" class="card">
+      <h2>Encontre os melhores candidatos</h2>
+      <p class="sub">Cole a descrição da vaga e veja os candidatos ordenados por compatibilidade.</p>
+
+      <label class="campo">Descrição da vaga</label>
+      <textarea name="vaga" required placeholder="Ex: Procuro desenvolvedor Python com experiência em dados e SQL"></textarea>
+
+      <button class="enviar" type="submit">Comparar candidatos</button>
+      <div id="msgRanking" class="msg"></div>
+    </form>
+
+    <div id="resultado"></div>
+  </section>
+
+</div>
+
+<script>
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  function mensagem(el, tipo, texto) {
+    el.className = 'msg ' + tipo;
+    el.textContent = texto;
+  }
+
+  // ---------- Abas ----------
+  document.querySelectorAll('.tab').forEach((botao) => {
+    botao.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach((b) => b.classList.remove('ativa'));
+      document.querySelectorAll('.aba').forEach((a) => a.classList.remove('ativa'));
+      botao.classList.add('ativa');
+      document.getElementById(botao.dataset.aba).classList.add('ativa');
+    });
+  });
+
+  // ---------- Upload: mostra o nome do arquivo ----------
+  const inputPdf = document.querySelector('input[type=file]');
+  inputPdf.addEventListener('change', () => {
+    const upload = document.getElementById('upload');
+    const texto = document.getElementById('textoUpload');
+    if (inputPdf.files.length) {
+      upload.classList.add('com-arquivo');
+      texto.textContent = '✅ ' + inputPdf.files[0].name;
+    } else {
+      upload.classList.remove('com-arquivo');
+      texto.textContent = '📄 Clique para escolher o currículo em PDF';
+    }
+  });
+
+  // ---------- Cadastro ----------
+  document.getElementById('formCadastro').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const botao = form.querySelector('button');
+    const msg = document.getElementById('msgCadastro');
+    botao.disabled = true;
+    botao.textContent = 'Enviando...';
+
+    try {
+      const resp = await fetch('/candidatos', { method: 'POST', body: new FormData(form) });
+      const dados = await resp.json();
+      if (!resp.ok) throw new Error(dados.detail || 'Erro ao cadastrar.');
+
+      mensagem(msg, 'ok', '✅ ' + dados.mensagem);
+      form.reset();
+      inputPdf.dispatchEvent(new Event('change'));
+    } catch (erro) {
+      mensagem(msg, 'erro', '❌ ' + erro.message);
+    } finally {
+      botao.disabled = false;
+      botao.textContent = 'Enviar cadastro';
+    }
+  });
+
+  // ---------- Ranking ----------
+  document.getElementById('formRanking').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const botao = form.querySelector('button');
+    const msg = document.getElementById('msgRanking');
+    const caixa = document.getElementById('resultado');
+    botao.disabled = true;
+    botao.textContent = 'Comparando...';
+    msg.className = 'msg';
+
+    try {
+      const resp = await fetch('/ranking', { method: 'POST', body: new FormData(form) });
+      const lista = await resp.json();
+      if (!resp.ok) throw new Error(lista.detail || 'Erro ao comparar.');
+
+      if (!lista.length) {
+        caixa.innerHTML = '<div class="vazio">Nenhum candidato cadastrado ainda.</div>';
+        return;
+      }
+
+      caixa.innerHTML = lista.map((c, i) => `
+        <div class="item">
+          <div class="pos">${i + 1}º</div>
+          <div class="info">
+            <strong>${esc(c.nome)}</strong>
+            <span>${esc(c.area || 'Área não informada')} · ${esc(c.cidade || 'Cidade não informada')}</span>
+            <div class="barra"><div data-largura="${c.score}"></div></div>
+          </div>
+          <div class="score">${c.score}%</div>
+        </div>`).join('');
+
+      // anima as barras
+      setTimeout(() => {
+        document.querySelectorAll('.barra div').forEach((b) => {
+          b.style.width = Math.min(b.dataset.largura, 100) + '%';
+        });
+      }, 50);
+    } catch (erro) {
+      mensagem(msg, 'erro', '❌ ' + erro.message);
+    } finally {
+      botao.disabled = false;
+      botao.textContent = 'Comparar candidatos';
+    }
+  });
+</script>
+</body>
+</html>

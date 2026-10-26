@@ -4,6 +4,7 @@ from pypdf import PdfReader
 
 from database import SessionLocal, Candidato
 from comparador import comparar
+from fastapi.staticfiles import StaticFiles
 
 app = FastAPI(title="Banco de Talentos")
 
@@ -67,3 +68,5 @@ def ranking(vaga: str = Form(...)):
         ]
     finally:
         db.close()
+
+app.mount("/", StaticFiles(directory="static", html=True), name="static")
