@@ -199,6 +199,19 @@
   .linha { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--borda); font-size: 0.92rem; }
   .linha span:first-child { color: var(--suave); }
   .trecho { white-space: pre-wrap; font-size: 0.85rem; line-height: 1.6; color: var(--suave); background: var(--input); padding: 14px; border-radius: 12px; }
+
+  /* Lista de cadastrados */
+  .acoes { display: flex; justify-content: space-between; align-items: center; }
+  .cad { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--borda); }
+  .cad:last-child { border-bottom: 0; }
+  .cad strong { display: block; }
+  .cad span { color: var(--suave); font-size: 0.82rem; }
+  .excluir {
+    padding: 8px 14px; border-radius: 10px; cursor: pointer; transition: 0.2s;
+    border: 1px solid rgba(239, 68, 68, 0.4); background: rgba(239, 68, 68, 0.12); color: #ef4444;
+    font: 600 0.85rem 'Inter', sans-serif;
+  }
+  .excluir:hover { background: #ef4444; color: #fff; }
 </style>
 </head>
 <body>
@@ -285,7 +298,10 @@
 
   <!-- RECRUTADOR -->
     <section id="recrutador" class="view">
-    <button class="voltar" onclick="ir('home')">← Voltar</button>
+    <div class="acoes">
+      <button class="voltar" onclick="ir('home')">← Voltar</button>
+      <button class="voltar" onclick="abrirCadastrados()">👥 Ver cadastrados</button>
+    </div>
     <form id="formRanking" class="card">
       <h2>🧑‍💼 Encontre os melhores candidatos</h2>
       <p class="sub">Cole a descrição da vaga e veja os candidatos ordenados por compatibilidade.</p>
@@ -324,6 +340,16 @@
         <button class="fechar" id="fecharModal">✕</button>
         <div id="modalConteudo" class="detalhe"></div>
       </div>
+    </div>
+  </section>
+
+  <!-- CADASTRADOS -->
+  <section id="cadastrados" class="view">
+    <button class="voltar" onclick="ir('recrutador')">← Voltar</button>
+    <div class="card">
+      <h2>👥 Candidatos cadastrados</h2>
+      <p class="sub" id="contagem">Carregando...</p>
+      <div id="listaCadastrados"></div>
     </div>
   </section>
 
@@ -483,6 +509,53 @@
   document.getElementById('fecharModal').addEventListener('click', fecharDetalhe);
   modal.addEventListener('click', (e) => { if (e.target === modal) fecharDetalhe(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') fecharDetalhe(); });
+
+    // ---------- Lista de cadastrados ----------
+  async function abrirCadastrados() {
+    ir('cadastrados');
+    await carregarCadastrados();
+  }
+
+  async function carregarCadastrados() {
+    const caixa = document.getElementById('listaCadastrados');
+    const contagem = document.getElementById('contagem');
+    try {
+      const resp = await fetch('/candidatos');
+      const lista = await resp.json();
+      if (!resp.ok) throw new Error('Erro ao carregar a lista.');
+
+      contagem.textContent = lista.length + ' candidato(s) no banco de talentos';
+      if (!lista.length) {
+        caixa.innerHTML = '<div class="vazio">Nenhum candidato cadastrado ainda.</div>';
+        return;
+      }
+
+      caixa.innerHTML = lista.map((c) => `
+        <div class="cad">
+          <div>
+            <strong>${esc(c.nome)}</strong>
+            <span>${esc(c.area || 'Área não informada')} · ${esc(c.cidade || 'Cidade não informada')} · ${esc(c.email)} · cadastrado em ${esc(c.criado_em)}</span>
+          </div>
+          <button class="excluir" data-id="${c.id}" data-nome="${esc(c.nome)}">🗑️ Excluir</button>
+        </div>`).join('');
+    } catch (erro) {
+      contagem.textContent = '❌ ' + erro.message;
+    }
+  }
+
+  document.getElementById('listaCadastrados').addEventListener('click', async (e) => {
+    const botao = e.target.closest('.excluir');
+    if (!botao) return;
+    if (!confirm('Excluir ' + botao.dataset.nome + ' do banco de talentos?')) return;
+
+    try {
+      const resp = await fetch('/candidatos/' + botao.dataset.id, { method: 'DELETE' });
+      if (!resp.ok) throw new Error('Erro ao excluir.');
+      await carregarCadastrados();
+    } catch (erro) {
+      alert(erro.message);
+    }
+  });
 </script>
 </body>
 </html>

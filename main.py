@@ -87,5 +87,38 @@ def ranking(
     finally:
         db.close()
 
+@app.get("/candidatos")
+def listar():
+    db = SessionLocal()
+    try:
+        candidatos = db.query(Candidato).order_by(Candidato.criado_em.desc()).all()
+        return [
+            {
+                "id": c.id,
+                "nome": c.nome,
+                "email": c.email,
+                "telefone": c.telefone,
+                "cidade": c.cidade,
+                "area": c.area,
+                "criado_em": c.criado_em.strftime("%d/%m/%Y"),
+            }
+            for c in candidatos
+        ]
+    finally:
+        db.close()
+
+
+@app.delete("/candidatos/{candidato_id}")
+def excluir(candidato_id: int):
+    db = SessionLocal()
+    try:
+        candidato = db.get(Candidato, candidato_id)
+        if not candidato:
+            raise HTTPException(404, "Candidato não encontrado.")
+        db.delete(candidato)
+        db.commit()
+        return {"mensagem": "Candidato excluído."}
+    finally:
+        db.close()
 
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
