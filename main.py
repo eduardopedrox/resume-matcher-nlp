@@ -1,12 +1,12 @@
 import io
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi.staticfiles import StaticFiles
 from pypdf import PdfReader
 
 from database import SessionLocal, Candidato
-from comparador import comparar
-from fastapi.staticfiles import StaticFiles
+from comparador import comparar, palavras_em_comum
 
-app = FastAPI(title="Banco de Talentos")
+app = FastAPI(title="TalentMatch")
 
 
 def ler_pdf(conteudo: bytes) -> str:
@@ -44,16 +44,31 @@ async def cadastrar(
 
 
 @app.post("/ranking")
-def ranking(vaga: str = Form(...)):
+def ranking(
+    vaga: str = Form(...),
+    area: str = Form(""),
+    cidade: str = Form(""),
+    limite: int = Form(0),
+):
     db = SessionLocal()
     try:
         candidatos = db.query(Candidato).all()
+
+        # filtros (ignoram maiúsculas/minúsculas)
+        if area.strip():
+            candidatos = [c for c in candidatos if area.strip().lower() in (c.area or "").lower()]
+        if cidade.strip():
+            candidatos = [c for c in candidatos if cidade.strip().lower() in (c.cidade or "").lower()]
+
         if not candidatos:
             return []
 
         por_id = {c.id: c for c in candidatos}
         textos = {c.id: c.texto_curriculo for c in candidatos}
-        resultado = comparar(vaga, textos)  # usa o cosseno do comparador.py
+        resultado = comparar(vaga, textos)  # cosseno
+
+        if limite > 0:
+            resultado = resultado[:limite]
 
         return [
             {
@@ -62,11 +77,15 @@ def ranking(vaga: str = Form(...)):
                 "area": por_id[i].area,
                 "cidade": por_id[i].cidade,
                 "email": por_id[i].email,
+                "telefone": por_id[i].telefone,
                 "score": score,
+                "palavras": palavras_em_comum(vaga, por_id[i].texto_curriculo),
+                "trecho": por_id[i].texto_curriculo[:500],
             }
             for i, score in resultado
         ]
     finally:
         db.close()
+
 
 app.mount("/", StaticFiles(directory="static", html=True), name="static")

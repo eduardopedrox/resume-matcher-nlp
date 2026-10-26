@@ -2,6 +2,15 @@ from pathlib import Path
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
+# Palavras comuns que não ajudam a comparar (artigos, preposições etc.)
+STOPWORDS = {
+    "de", "do", "da", "dos", "das", "em", "no", "na", "nos", "nas", "por", "para",
+    "com", "sem", "sobre", "entre", "até", "ao", "aos", "as", "os", "um", "uma",
+    "uns", "umas", "ou", "que", "se", "como", "mais", "muito", "ser", "ter", "tem",
+    "foi", "são", "há", "já", "não", "sua", "seu", "suas", "seus", "meu", "minha",
+    "este", "esta", "isso", "isto", "também", "procuro", "busco",
+}
+
 
 def carregar_curriculos(pasta="curriculos"):
     """Lê todos os .txt da pasta e devolve {nome: texto}."""
@@ -12,21 +21,29 @@ def carregar_curriculos(pasta="curriculos"):
 
 
 def comparar(vaga, curriculos):
-    """Devolve lista de (nome, pontuação) ordenada do melhor pro pior."""
-    nomes = list(curriculos.keys())
-    textos = [vaga] + [curriculos[n] for n in nomes]
+    """Devolve lista de (chave, pontuação) ordenada do melhor pro pior."""
+    chaves = list(curriculos.keys())
+    textos = [vaga] + [curriculos[k] for k in chaves]
 
-    vetorizador = TfidfVectorizer()
+    vetorizador = TfidfVectorizer(stop_words=list(STOPWORDS))
     matriz = vetorizador.fit_transform(textos)
 
     scores = cosine_similarity(matriz[0:1], matriz[1:])[0]
 
-    resultado = sorted(zip(nomes, scores), key=lambda x: x[1], reverse=True)
-    return [(nome, round(float(s) * 100, 1)) for nome, s in resultado]
+    resultado = sorted(zip(chaves, scores), key=lambda x: x[1], reverse=True)
+    return [(chave, round(float(s) * 100, 1)) for chave, s in resultado]
 
 
-if __name__ == "__main__":
-    vaga = "Procuro desenvolvedor Python com experiência em dados e SQL"
-    curriculos = carregar_curriculos()
-    for nome, score in comparar(vaga, curriculos):
-        print(f"{nome}: {score}%")
+def palavras_em_comum(vaga, texto, limite=12):
+    """Palavras da vaga que também aparecem no currículo."""
+    analisador = TfidfVectorizer().build_analyzer()
+    palavras_texto = set(analisador(texto))
+
+    vistas, resultado = set(), []
+    for palavra in analisador(vaga):
+        if palavra in STOPWORDS or palavra in vistas:
+            continue
+        vistas.add(palavra)
+        if palavra in palavras_texto:
+            resultado.append(palavra)
+    return resultado[:limite]

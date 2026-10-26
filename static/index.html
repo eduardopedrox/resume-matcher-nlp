@@ -164,6 +164,41 @@
   .barra div { height: 100%; width: 0; border-radius: 99px; background: linear-gradient(90deg, var(--a1), var(--a2)); transition: width 0.9s ease; }
   .score { font-size: 1.5rem; font-weight: 800; color: var(--score); }
   .vazio { text-align: center; color: var(--suave); padding: 20px; }
+    /* Filtros */
+  .filtros { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-top: 18px; }
+  @media (max-width: 600px) { .filtros { grid-template-columns: 1fr; } }
+  select {
+    width: 100%; padding: 12px 14px; border-radius: 12px; background: var(--input); color: var(--texto);
+    border: 1px solid var(--borda); font: 0.95rem 'Inter', sans-serif; outline: none;
+  }
+  select:focus { border-color: var(--a1); box-shadow: 0 0 0 3px var(--glow1); }
+
+  /* Palavras em comum */
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .chip { padding: 3px 10px; border-radius: 99px; font-size: 0.75rem; font-weight: 600; background: var(--glow1); color: var(--a1); }
+  .item { cursor: pointer; }
+
+  /* Janela de detalhes */
+  .modal {
+    position: fixed; inset: 0; z-index: 50; display: none; place-items: center; padding: 16px;
+    background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px);
+  }
+  .modal.aberto { display: grid; }
+  .modal-caixa {
+    position: relative; width: 100%; max-width: 560px; max-height: 88vh; overflow-y: auto;
+    padding: 30px; border-radius: 22px; background: var(--bg); border: 1px solid var(--borda);
+    animation: entrarTela 0.3s ease both;
+  }
+  .fechar {
+    position: absolute; top: 14px; right: 14px; width: 36px; height: 36px; border-radius: 50%;
+    border: 1px solid var(--borda); background: var(--card); color: var(--texto); cursor: pointer;
+  }
+  .detalhe h3 { font-size: 1.4rem; padding-right: 40px; }
+  .detalhe .grande { font-size: 2.2rem; font-weight: 800; color: var(--score); margin: 6px 0 16px; }
+  .detalhe h4 { margin: 20px 0 8px; font-size: 0.8rem; color: var(--suave); text-transform: uppercase; letter-spacing: 0.5px; }
+  .linha { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--borda); font-size: 0.92rem; }
+  .linha span:first-child { color: var(--suave); }
+  .trecho { white-space: pre-wrap; font-size: 0.85rem; line-height: 1.6; color: var(--suave); background: var(--input); padding: 14px; border-radius: 12px; }
 </style>
 </head>
 <body>
@@ -249,7 +284,7 @@
   </section>
 
   <!-- RECRUTADOR -->
-  <section id="recrutador" class="view">
+    <section id="recrutador" class="view">
     <button class="voltar" onclick="ir('home')">← Voltar</button>
     <form id="formRanking" class="card">
       <h2>🧑‍💼 Encontre os melhores candidatos</h2>
@@ -258,11 +293,38 @@
       <label class="campo">Descrição da vaga</label>
       <textarea name="vaga" required placeholder="Ex: Procuro desenvolvedor Python com experiência em dados e SQL"></textarea>
 
+      <div class="filtros">
+        <div>
+          <label class="campo">Filtrar por área</label>
+          <input type="text" name="area" placeholder="Ex: Dados">
+        </div>
+        <div>
+          <label class="campo">Filtrar por cidade</label>
+          <input type="text" name="cidade" placeholder="Ex: São Paulo">
+        </div>
+        <div>
+          <label class="campo">Quantos mostrar</label>
+          <select name="limite">
+            <option value="0">Todos</option>
+            <option value="3">Top 3</option>
+            <option value="5">Top 5</option>
+            <option value="10">Top 10</option>
+          </select>
+        </div>
+      </div>
+
       <button class="enviar" type="submit">Comparar candidatos</button>
       <div id="msgRanking" class="msg"></div>
     </form>
 
     <div id="resultado"></div>
+
+    <div class="modal" id="modal">
+      <div class="modal-caixa">
+        <button class="fechar" id="fecharModal">✕</button>
+        <div id="modalConteudo" class="detalhe"></div>
+      </div>
+    </div>
   </section>
 
 </div>
@@ -338,6 +400,8 @@
   });
 
   // ---------- Ranking ----------
+  let ultimaLista = [];
+
   document.getElementById('formRanking').addEventListener('submit', async (e) => {
     e.preventDefault();
     const form = e.target;
@@ -353,18 +417,21 @@
       const lista = await resp.json();
       if (!resp.ok) throw new Error(lista.detail || 'Erro ao comparar.');
 
+      ultimaLista = lista;
+
       if (!lista.length) {
-        caixa.innerHTML = '<div class="vazio">Nenhum candidato cadastrado ainda.</div>';
+        caixa.innerHTML = '<div class="vazio">Nenhum candidato encontrado com esses filtros.</div>';
         return;
       }
 
       caixa.innerHTML = lista.map((c, i) => `
-        <div class="item" style="animation-delay:${i * 0.08}s">
+        <div class="item" data-i="${i}" style="animation-delay:${i * 0.08}s">
           <div class="pos">${i + 1}º</div>
           <div class="info">
             <strong>${esc(c.nome)}</strong>
             <span>${esc(c.area || 'Área não informada')} · ${esc(c.cidade || 'Cidade não informada')}</span>
             <div class="barra"><div data-largura="${c.score}"></div></div>
+            <div class="chips">${c.palavras.slice(0, 5).map((p) => `<span class="chip">${esc(p)}</span>`).join('')}</div>
           </div>
           <div class="score">${c.score}%</div>
         </div>`).join('');
@@ -381,6 +448,41 @@
       botao.textContent = 'Comparar candidatos';
     }
   });
+
+  // ---------- Detalhes do candidato ----------
+  const modal = document.getElementById('modal');
+
+  function abrirDetalhe(c) {
+    const chips = c.palavras.length
+      ? c.palavras.map((p) => `<span class="chip">${esc(p)}</span>`).join('')
+      : '<span style="color:var(--suave)">Nenhuma palavra em comum.</span>';
+
+    document.getElementById('modalConteudo').innerHTML = `
+      <h3>${esc(c.nome)}</h3>
+      <div class="grande">${c.score}% compatível</div>
+
+      <div class="linha"><span>Área</span><span>${esc(c.area || 'Não informada')}</span></div>
+      <div class="linha"><span>Cidade</span><span>${esc(c.cidade || 'Não informada')}</span></div>
+      <div class="linha"><span>E-mail</span><span>${esc(c.email)}</span></div>
+      <div class="linha"><span>Telefone</span><span>${esc(c.telefone || 'Não informado')}</span></div>
+
+      <h4>Palavras da vaga encontradas no currículo</h4>
+      <div class="chips" style="margin-top:0">${chips}</div>
+
+      <h4>Trecho do currículo</h4>
+      <div class="trecho">${esc(c.trecho)}...</div>`;
+    modal.classList.add('aberto');
+  }
+
+  function fecharDetalhe() { modal.classList.remove('aberto'); }
+
+  document.getElementById('resultado').addEventListener('click', (e) => {
+    const item = e.target.closest('.item');
+    if (item) abrirDetalhe(ultimaLista[item.dataset.i]);
+  });
+  document.getElementById('fecharModal').addEventListener('click', fecharDetalhe);
+  modal.addEventListener('click', (e) => { if (e.target === modal) fecharDetalhe(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') fecharDetalhe(); });
 </script>
 </body>
 </html>
