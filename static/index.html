@@ -358,12 +358,28 @@
           <input type="tel" name="telefone">
         </div>
         <div>
+          <label class="campo">Área de atuação</label>
+          <select name="area" id="selArea" required><option value="">Carregando...</option></select>
+        </div>
+        <div>
+          <label class="campo">Estado (UF)</label>
+          <select name="estado" id="selEstado" required><option value="">Carregando...</option></select>
+        </div>
+        <div>
           <label class="campo">Cidade</label>
-          <input type="text" name="cidade">
+          <select name="cidade" id="selCidade" required disabled><option value="">Escolha o estado primeiro</option></select>
+        </div>
+        <div>
+          <label class="campo">Nível</label>
+          <select name="nivel" id="selNivel" required><option value="">Carregando...</option></select>
+        </div>
+        <div>
+          <label class="campo">Escolaridade</label>
+          <select name="escolaridade" id="selEscolaridade" required><option value="">Carregando...</option></select>
         </div>
         <div class="full">
-          <label class="campo">Área de atuação</label>
-          <input type="text" name="area" placeholder="Ex: Dados, Design, Vendas">
+          <label class="campo">Modalidade de trabalho</label>
+          <select name="modalidade" id="selModalidade" required><option value="">Carregando...</option></select>
         </div>
         <div class="full">
           <label class="upload" id="upload">
@@ -753,6 +769,56 @@
       /* se a sessão expirou, a função api já leva para o login */
     }
   }
+    // ---------- Opções padronizadas e cidades do IBGE ----------
+  const selEstado = document.getElementById('selEstado');
+  const selCidade = document.getElementById('selCidade');
+
+  function preencher(sel, itens, textoInicial) {
+    sel.innerHTML = `<option value="">${textoInicial}</option>` +
+      itens.map((i) => `<option value="${esc(i)}">${esc(i)}</option>`).join('');
+  }
+
+  async function carregarOpcoes() {
+    try {
+      const resp = await fetch('/opcoes');
+      const o = await resp.json();
+      preencher(document.getElementById('selArea'), o.areas, 'Selecione a área');
+      preencher(selEstado, o.estados, 'UF');
+      preencher(document.getElementById('selNivel'), o.niveis, 'Selecione o nível');
+      preencher(document.getElementById('selEscolaridade'), o.escolaridades, 'Selecione a escolaridade');
+      preencher(document.getElementById('selModalidade'), o.modalidades, 'Selecione a modalidade');
+    } catch (erro) {
+      mensagem(document.getElementById('msgCadastro'), 'erro', '❌ Não consegui carregar as listas. Recarregue a página.');
+    }
+  }
+
+  selEstado.addEventListener('change', async () => {
+    const uf = selEstado.value;
+    selCidade.disabled = true;
+    if (!uf) {
+      selCidade.innerHTML = '<option value="">Escolha o estado primeiro</option>';
+      return;
+    }
+    selCidade.innerHTML = '<option value="">Carregando cidades...</option>';
+    try {
+      const resp = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios`);
+      if (!resp.ok) throw new Error();
+      const cidades = await resp.json();
+      if (selEstado.value !== uf) return;  // o usuário já trocou de estado
+      cidades.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+      preencher(selCidade, cidades.map((c) => c.nome), 'Selecione a cidade');
+      selCidade.disabled = false;
+    } catch (erro) {
+      selCidade.innerHTML = '<option value="">Não foi possível carregar. Escolha o estado de novo.</option>';
+    }
+  });
+
+  // depois de enviar o cadastro, o formulário volta ao estado inicial
+  document.getElementById('formCadastro').addEventListener('reset', () => {
+    setTimeout(() => selEstado.dispatchEvent(new Event('change')), 0);
+  });
+
+  carregarOpcoes();
 </script>
 </body>
 </html>

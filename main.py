@@ -13,6 +13,9 @@ from fastapi import Depends, Header
 from collections import Counter
 from datetime import datetime, timedelta
 
+from opcoes import AREAS, NIVEIS, ESCOLARIDADES, MODALIDADES, ESTADOS
+
+
 app = FastAPI(title="TalentMatch")
 
 SENHA_RECRUTADOR = os.getenv("SENHA_RECRUTADOR", "talentmatch123")
@@ -38,10 +41,18 @@ async def cadastrar(
     nome: str = Form(...),
     email: str = Form(...),
     telefone: str = Form(""),
-    cidade: str = Form(""),
-    area: str = Form(""),
+    estado: str = Form(...),
+    cidade: str = Form(...),
+    area: str = Form(...),
+    nivel: str = Form(...),
+    escolaridade: str = Form(...),
+    modalidade: str = Form(...),
     curriculo: UploadFile = File(...),
 ):
+    if (area not in AREAS or nivel not in NIVEIS or escolaridade not in ESCOLARIDADES
+            or modalidade not in MODALIDADES or estado not in ESTADOS or not cidade.strip()):
+        raise HTTPException(400, "Escolha as opções das listas em todos os campos.")
+
     if not curriculo.filename.lower().endswith(".pdf"):
         raise HTTPException(400, "Envie o currículo em PDF.")
 
@@ -53,14 +64,15 @@ async def cadastrar(
     try:
         candidato = Candidato(
             nome=nome, email=email, telefone=telefone,
-            cidade=cidade, area=area, texto_curriculo=texto,
+            estado=estado, cidade=cidade.strip(), area=area,
+            nivel=nivel, escolaridade=escolaridade, modalidade=modalidade,
+            texto_curriculo=texto,
         )
         db.add(candidato)
         db.commit()
         return {"id": candidato.id, "mensagem": "Cadastro realizado!"}
     finally:
         db.close()
-
 
 @app.post("/ranking", dependencies=[Depends(exigir_senha)])
 def ranking(
@@ -146,8 +158,8 @@ def estatisticas():
     try:
         candidatos = db.query(Candidato).all()
 
-        areas = Counter((c.area or "").strip().title() for c in candidatos if (c.area or "").strip())
-        cidades = Counter((c.cidade or "").strip().title() for c in candidatos if (c.cidade or "").strip())
+        areas = Counter(c.area for c in candidatos if c.area)
+        cidades = Counter(f"{c.cidade} - {c.estado}" for c in candidatos if c.cidade and c.estado)
 
         semana = datetime.utcnow() - timedelta(days=7)
         novos = sum(1 for c in candidatos if c.criado_em and c.criado_em >= semana)
@@ -162,5 +174,14 @@ def estatisticas():
         }
     finally:
         db.close()
-        
+
+@app.get("/opcoes")
+def opcoes():
+    return {
+        "areas": AREAS,
+        "niveis": NIVEIS,
+        "escolaridades": ESCOLARIDADES,
+        "modalidades": MODALIDADES,
+        "estados": ESTADOS,
+    }
 app.mount("/", StaticFiles(directory="static", html=True), name="static")

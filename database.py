@@ -24,6 +24,10 @@ class Candidato(Base):
     telefone = Column(String(30))
     cidade = Column(String(80))
     area = Column(String(80))
+    estado = Column(String(2))
+    nivel = Column(String(40))
+    escolaridade = Column(String(60))
+    modalidade = Column(String(30))
     texto_curriculo = Column(Text, nullable=False)
     criado_em = Column(DateTime, default=datetime.utcnow)
 
