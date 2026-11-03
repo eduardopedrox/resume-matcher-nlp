@@ -273,6 +273,27 @@
     display: inline-block; margin-top: 16px; padding: 10px 16px; border-radius: 10px; text-decoration: none;
     font: 600 0.88rem 'Inter', sans-serif; background: linear-gradient(135deg, var(--a1), var(--a2)); color: #fff;
   }
+
+    /* Painel do recrutador */
+  .painel { margin-bottom: 24px; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  @media (max-width: 640px) { .stats { grid-template-columns: 1fr 1fr; } }
+  .stat { padding: 18px; border-radius: 18px; background: var(--card); border: 1px solid var(--borda); transition: 0.25s; }
+  .stat:hover { transform: translateY(-4px); border-color: var(--a1); }
+  .stat small { display: block; color: var(--suave); font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat b {
+    display: block; margin-top: 6px; font-size: 2rem; font-weight: 800;
+    background: linear-gradient(90deg, #818cf8, #f472b6); -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+
+  .painel-listas { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+  @media (max-width: 640px) { .painel-listas { grid-template-columns: 1fr; } }
+  .mini { padding: 18px; border-radius: 18px; background: var(--card); border: 1px solid var(--borda); }
+  .mini h4 { font-size: 0.78rem; color: var(--suave); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
+  .linha-barra { margin-bottom: 10px; font-size: 0.85rem; }
+  .linha-barra .rotulo { display: flex; justify-content: space-between; margin-bottom: 4px; }
+  .linha-barra .trilho { height: 6px; border-radius: 99px; background: var(--borda); overflow: hidden; }
+  .linha-barra .trilho div { height: 100%; width: 0; border-radius: 99px; background: linear-gradient(90deg, var(--a1), var(--a2)); transition: width 0.8s ease; }
 </style>
 </head>
 <body>
@@ -363,6 +384,18 @@
       <button class="voltar" onclick="ir('home')">← Voltar</button>
       <button class="voltar" onclick="abrirCadastrados()">👥 Ver cadastrados</button>
     </div>
+        <div class="painel">
+      <div class="stats">
+        <div class="stat"><small>Candidatos</small><b id="statTotal">0</b></div>
+        <div class="stat"><small>Novos (7 dias)</small><b id="statNovos">0</b></div>
+        <div class="stat"><small>Áreas</small><b id="statAreas">0</b></div>
+        <div class="stat"><small>Cidades</small><b id="statCidades">0</b></div>
+      </div>
+      <div class="painel-listas">
+        <div class="mini"><h4>Áreas mais comuns</h4><div id="listaAreas"></div></div>
+        <div class="mini"><h4>Cidades mais comuns</h4><div id="listaCidades"></div></div>
+      </div>
+    </div>
     <form id="formRanking" class="card">
       <h2>🧑‍💼 Encontre os melhores candidatos</h2>
       <p class="sub">Cole a descrição da vaga e veja os candidatos ordenados por compatibilidade.</p>
@@ -437,6 +470,7 @@
     document.querySelectorAll('.view').forEach((v) => v.classList.remove('ativa'));
     document.getElementById(id).classList.add('ativa');
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (id === 'recrutador') carregarPainel();
   }
 
   // ---------- Tema claro/escuro ----------
@@ -673,6 +707,52 @@
       mensagem(msg, 'erro', '❌ ' + erro.message);
     }
   });
+    // ---------- Painel do recrutador ----------
+  function contar(el, alvo) {
+    const inicio = performance.now();
+    const duracao = 800;
+    function passo(agora) {
+      const t = Math.min((agora - inicio) / duracao, 1);
+      el.textContent = Math.round(alvo * t);
+      if (t < 1) requestAnimationFrame(passo);
+    }
+    requestAnimationFrame(passo);
+  }
+
+  function desenharBarras(id, itens) {
+    const caixa = document.getElementById(id);
+    if (!itens.length) {
+      caixa.innerHTML = '<span style="color:var(--suave);font-size:0.85rem">Sem dados ainda.</span>';
+      return;
+    }
+    const maximo = Math.max(...itens.map((i) => i.qtd));
+    caixa.innerHTML = itens.map((i) => `
+      <div class="linha-barra">
+        <div class="rotulo"><span>${esc(i.nome)}</span><b>${i.qtd}</b></div>
+        <div class="trilho"><div data-largura="${(i.qtd / maximo) * 100}"></div></div>
+      </div>`).join('');
+    setTimeout(() => {
+      caixa.querySelectorAll('.trilho div').forEach((b) => {
+        b.style.width = b.dataset.largura + '%';
+      });
+    }, 50);
+  }
+
+  async function carregarPainel() {
+    try {
+      const resp = await api('/estatisticas');
+      const d = await resp.json();
+      if (!resp.ok) return;
+      contar(document.getElementById('statTotal'), d.total);
+      contar(document.getElementById('statNovos'), d.novos_semana);
+      contar(document.getElementById('statAreas'), d.total_areas);
+      contar(document.getElementById('statCidades'), d.total_cidades);
+      desenharBarras('listaAreas', d.areas);
+      desenharBarras('listaCidades', d.cidades);
+    } catch (erro) {
+      /* se a sessão expirou, a função api já leva para o login */
+    }
+  }
 </script>
 </body>
 </html>

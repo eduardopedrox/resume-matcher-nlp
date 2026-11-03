@@ -10,6 +10,9 @@ import os
 import secrets
 from fastapi import Depends, Header
 
+from collections import Counter
+from datetime import datetime, timedelta
+
 app = FastAPI(title="TalentMatch")
 
 SENHA_RECRUTADOR = os.getenv("SENHA_RECRUTADOR", "talentmatch123")
@@ -137,4 +140,27 @@ def excluir(candidato_id: int):
     finally:
         db.close()
 
+@app.get("/estatisticas", dependencies=[Depends(exigir_senha)])
+def estatisticas():
+    db = SessionLocal()
+    try:
+        candidatos = db.query(Candidato).all()
+
+        areas = Counter((c.area or "").strip().title() for c in candidatos if (c.area or "").strip())
+        cidades = Counter((c.cidade or "").strip().title() for c in candidatos if (c.cidade or "").strip())
+
+        semana = datetime.utcnow() - timedelta(days=7)
+        novos = sum(1 for c in candidatos if c.criado_em and c.criado_em >= semana)
+
+        return {
+            "total": len(candidatos),
+            "novos_semana": novos,
+            "total_areas": len(areas),
+            "total_cidades": len(cidades),
+            "areas": [{"nome": n, "qtd": q} for n, q in areas.most_common(5)],
+            "cidades": [{"nome": n, "qtd": q} for n, q in cidades.most_common(5)],
+        }
+    finally:
+        db.close()
+        
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
